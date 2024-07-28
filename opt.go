@@ -1,3 +1,28 @@
+// Package opt is a simple, opinionated, options wrapper
+// for [pflag] & [cobra].
+//
+// It aims to be a simpler alternative to viper.
+//
+// By default, all options can be specified as:
+//  1. Default values (lowest precedent)
+//  2. Environment variables
+//  3. Command-line flags (highest precedent)
+//
+// All commands have a name, which is used to set default
+// values.
+//
+// The default environment variable name is the option's
+// name, but in upper case (see [strings.ToUpper]). To
+// disallow an option from being specified as an environment
+// variable, override it environment variable name to be ""
+// using [EnvName].
+//
+// The default command-line flag name is the option's
+// name. By default, flags are added to the [cobra.Command]'s
+// normal [cobra.FlagSet]. Use [FlagIsPersistent] to add it
+// to the persistent [cobra.FlagSet] instead. To disallow
+// an option from being specified as a command-line flag,
+// override its flag name to be "" using [FlagName].
 package opt
 
 import (
@@ -54,6 +79,7 @@ func (o *opt[T]) init() {
 	})
 }
 
+// String sets up a string option with the specified name
 func String(cmd *cobra.Command, v *string, name string, optFuncs ...OptFunc[string]) {
 	doVar(
 		cmd,
@@ -67,6 +93,7 @@ func String(cmd *cobra.Command, v *string, name string, optFuncs ...OptFunc[stri
 	)
 }
 
+// Bool sets up a boolean option with the specified name
 func Bool(cmd *cobra.Command, v *bool, name string, optFuncs ...OptFunc[bool]) {
 	doVar(
 		cmd,
@@ -124,51 +151,71 @@ func doVar[T OptType](cmd *cobra.Command, v *T, name string, optFuncs []OptFunc[
 
 type OptFunc[T OptType] func(*opt[T])
 
+// FlagName overrides the default flag name.
+// As stated in the package documentation, if the flag name
+// is not overriden, it defaults to the option's name.
+//
+// To disable flag functionlity entirely for this option, override the
+// flag name to be "".
 func FlagName[T OptType](flagName string) OptFunc[T] {
-	if flagName == "" {
-		panic("opt: flagName cannot be empty")
-	}
 	return func(o *opt[T]) {
 		o.flagName = flagName
 	}
 }
 
+// FlagShorthand specifies a shorthand that can be used for the
+// flag.
+//
+// Setting it to "" does nothing.
+//
+// The shorthand is only applicable when the flag is not disabled. See [FlagName]'s
+// documentation for how to disable flags.
 func FlagShorthand[T OptType](flagShorthand string) OptFunc[T] {
-	if flagShorthand == "" {
-		panic("opt: flagShorthand cannot be empty")
-	}
 	return func(o *opt[T]) {
 		o.flagShorthand = flagShorthand
 	}
 }
 
+// FlagIsPersistent specifies that the flag should be added
+// to the [cobra.Command]'s persistent [pflag.FlagSet].
 func FlagIsPersistent[T OptType]() OptFunc[T] {
 	return func(o *opt[T]) {
 		o.flagIsPersistent = true
 	}
 }
 
+// IsDirname specifies that the option's value should be
+// a directory name. This is only used with shell auto-completion;
+// the caller must validate the actual value before use.
 func IsDirname() OptFunc[string] {
 	return func(o *opt[string]) {
 		o.flagIsDir = true
 	}
 }
 
+// IsFilename specifies that the option's value should be
+// a file name. This is only used with shell auto-completion;
+// the caller must validate the actual value before use.
 func IsFilename() OptFunc[string] {
 	return func(o *opt[string]) {
 		o.flagIsFile = true
 	}
 }
 
+// EnvName overrides the default environment variable name.
+//
+// As stated in the package documentation, if the environment name
+// is not overriden, it defaults to an upper-cased version of the option's name.
+//
+// To disable environment lookup functionlity entirely for this option, override the
+// environment name to be "".
 func EnvName[T OptType](envName string) OptFunc[T] {
-	if envName == "" {
-		panic("opt: envName cannot be empty")
-	}
 	return func(o *opt[T]) {
 		o.envName = envName
 	}
 }
 
+// Default sets the default value for this option.
 func Default[T OptType](v T) OptFunc[T] {
 	return func(o *opt[T]) {
 		o.defaultValue = v
